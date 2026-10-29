@@ -43,6 +43,8 @@ another user cannot read the order.
 then try `POST /orders` (add any `Idempotency-Key`), `GET /portfolio` and
 `GET /portfolio/history?at=<ISO time>`.
 
+![Swagger UI listing the market, orders and portfolio endpoints](docs/images/swagger-ui.webp)
+
 **4. Run the tests** (they use the `trading_test` database, reset before every test)
 
 ```bash
