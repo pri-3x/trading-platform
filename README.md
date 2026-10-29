@@ -66,8 +66,36 @@ npm run lint && npm run build
 
 ---
 
+## Assumptions (where the brief was ambiguous)
+
+Each open question, the decision taken, and why. Details are in the linked sections.
+
+| Question                                             | Decision                                                                                                                                                                                                                              | Why                                                                                                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Who is on the other side of a trade?                 | A simulated **house market maker** quotes a price ladder around the current price, with limited size per level. What one order uses up is shared by all users until the next price tick. ([Trading engine](#trading-engine))          | The brief has no other order flow; this gives realistic spread, partial fills and deterministic tests. Cross-user matching is a stretch goal. |
+| What happens to the unfilled part of a market order? | **Cancelled immediately** (immediate-or-cancel). The order ends `CANCELLED` with `cancelReason: IOC_REMAINDER`, keeping its fills. Market orders never rest.                                                                          | A resting market order has no price limit, which is unsafe.                                                                                   |
+| Market order size in shares or USD?                  | **Shares**, for both order types. `POST /calculator` converts USD to shares.                                                                                                                                                          | One size unit keeps reservations and validation simple.                                                                                       |
+| When do resting limit orders fill?                   | On each new price tick, best limit first then oldest. Never at a worse price than the limit; a better price returns the difference to available cash.                                                                                 | Matches "resting" semantics against the simulated market.                                                                                     |
+| How much is reserved?                                | Limit buy: quantity × limit price. Market buy: exact cost of its fills. Sell: the shares. Released on fill or cancel.                                                                                                                 | Guarantees an order can always settle; prevents double spending.                                                                              |
+| Can a partially filled order be cancelled?           | Yes. Fills are kept, the remainder's reservation is released. Cancelling a filled or cancelled order → 409.                                                                                                                           | Standard exchange behaviour.                                                                                                                  |
+| Idempotency details                                  | Key scoped per user. Same key + same body → original response (header `Idempotent-Replayed: true`). Same key + different body → 409. A failed request doesn't use up the key.                                                         | Safe client retries without duplicate orders.                                                                                                 |
+| ">15% move in 60s": compared to what?                | Current price vs the **latest price at or before 60 s ago** (if none, the earliest price in the window). Strictly greater than 15%. ([Circuit breaker](#circuit-breaker))                                                             | A single, testable reference point; exact decimal comparison.                                                                                 |
+| Do further big moves extend a halt?                  | **No.** A halt lasts 30 s; a qualifying move after it ends starts a new one.                                                                                                                                                          | Predictable `Retry-After`.                                                                                                                    |
+| What still works during a halt?                      | Reads, the calculator and cancellations. Resting orders are **frozen** (not filled) until the halt ends. New orders → 503 with `Retry-After`.                                                                                         | A halt should stop execution, but users must be able to exit open orders.                                                                     |
+| History: exact cut-off for `at`?                     | **Inclusive**: everything at or before `at`. Events with identical timestamps are ordered by ledger sequence. Future `at` → 400. Before the user existed → empty portfolio. ([Historical reconstruction](#historical-reconstruction)) | Deterministic, repeatable results.                                                                                                            |
+| History: which price?                                | The latest price observed at or before `at`, never a later one. If none exists, value is `null` and `valuationComplete: false`.                                                                                                       | Values the past with the information available then.                                                                                          |
+| Cost basis method                                    | **Weighted average**; selling realizes P&L against the average cost.                                                                                                                                                                  | Simple and common for this kind of product.                                                                                                   |
+| Precision, fees, minimums                            | USD 8 decimals, shares 6, prices 2. Fees are zero. Minimum order value $1. ([Precision](#precision-rounding-fees-minimums))                                                                                                           | 6 + 2 = 8 decimals makes every trade value exact, with no rounding leftovers.                                                                 |
+| Another user's order                                 | **404**, not 403.                                                                                                                                                                                                                     | Doesn't reveal that the order exists.                                                                                                         |
+| Rejected orders                                      | Not stored; the whole transaction rolls back.                                                                                                                                                                                         | No partial financial effects; the key can be retried.                                                                                         |
+| Short selling                                        | Not allowed: you can only sell shares you have available.                                                                                                                                                                             | Margin and shorting are stretch goals.                                                                                                        |
+| Auth and funding                                     | Email/password → JWT. Every new user gets 100,000 simulated USD.                                                                                                                                                                      | Brief says not to over-invest in auth.                                                                                                        |
+
+---
+
 ## Contents
 
+0. [Assumptions](#assumptions-where-the-brief-was-ambiguous)
 1. [Quick start](#quick-start)
 2. [Scripts](#scripts)
 3. [Architecture](#architecture)
@@ -81,7 +109,7 @@ npm run lint && npm run build
 11. [Price simulator](#price-simulator)
 12. [API reference](#api-reference)
 13. [Testing](#testing)
-14. [Assumptions, limitations and trade-offs](#assumptions-limitations-and-trade-offs)
+14. [Limitations and trade-offs](#limitations-and-trade-offs)
 
 ---
 
@@ -601,7 +629,7 @@ separate pooled connections.
 
 ---
 
-## Assumptions, limitations and trade-offs
+## Limitations and trade-offs
 
 - **Liquidity is simulated** by a house market maker (the counterparty of every trade); there is no
   cross-user order book. Price-time priority applies among resting orders competing for the house
