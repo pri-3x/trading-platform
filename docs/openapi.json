@@ -1,0 +1,2751 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tokenized Pre-IPO Trading Platform",
+    "version": "1.0.0",
+    "description": "Simulated trading of fictional pre-IPO share tokens against a USD stablecoin. All monetary values are decimal strings: cash 8dp, shares 6dp, prices 2dp."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness + database connectivity",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    },
+                    "time": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "time"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register a user (credited with INITIAL_USER_FUNDING USD stablecoin) and return a JWT",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "tokenType": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expiresIn": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "email": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "tokenType",
+                    "expiresIn",
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Exchange email/password for a JWT bearer token",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "tokenType": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    },
+                    "expiresIn": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "email": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "tokenType",
+                    "expiresIn",
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assets": {
+      "get": {
+        "summary": "List assets with their latest simulated price and trading status",
+        "tags": [
+          "market"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "assets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "symbol": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "initialPrice": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "priceObservedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "changeFromInitial": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "trading": {
+                            "type": "object",
+                            "properties": {
+                              "halted": {
+                                "type": "boolean"
+                              },
+                              "haltedUntil": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "halted",
+                              "haltedUntil"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "symbol",
+                          "name",
+                          "description",
+                          "initialPrice",
+                          "price",
+                          "priceObservedAt",
+                          "changeFromInitial",
+                          "trading"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "assets"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assets/{symbol}": {
+      "get": {
+        "summary": "Asset details, current price, price history and recent circuit-breaker events",
+        "tags": [
+          "market"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false
+          },
+          {
+            "schema": {
+              "default": 500,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16
+            },
+            "in": "path",
+            "name": "symbol",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "initialPrice": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "priceObservedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "changeFromInitial": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "trading": {
+                      "type": "object",
+                      "properties": {
+                        "halted": {
+                          "type": "boolean"
+                        },
+                        "haltedUntil": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "halted",
+                        "haltedUntil"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "priceHistory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "price": {
+                            "type": "string"
+                          },
+                          "observedAt": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "price",
+                          "observedAt",
+                          "source"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "circuitBreakerEvents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "triggeredAt": {
+                            "type": "string"
+                          },
+                          "haltedUntil": {
+                            "type": "string"
+                          },
+                          "referencePrice": {
+                            "type": "string"
+                          },
+                          "referenceObservedAt": {
+                            "type": "string"
+                          },
+                          "triggerPrice": {
+                            "type": "string"
+                          },
+                          "changeRatio": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "triggeredAt",
+                          "haltedUntil",
+                          "referencePrice",
+                          "referenceObservedAt",
+                          "triggerPrice",
+                          "changeRatio"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "symbol",
+                    "name",
+                    "description",
+                    "initialPrice",
+                    "price",
+                    "priceObservedAt",
+                    "changeFromInitial",
+                    "trading",
+                    "priceHistory",
+                    "circuitBreakerEvents"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calculator": {
+      "post": {
+        "summary": "Indicative USD -> shares conversion (read-only, never creates orders)",
+        "tags": [
+          "market"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "usdAmount": {
+                    "type": "string",
+                    "description": "USD amount, > 0, at most 8 decimals (decimal string, e.g. \"1000\")"
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "usdAmount"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "usdAmount": {
+                      "type": "string"
+                    },
+                    "price": {
+                      "type": "string"
+                    },
+                    "priceObservedAt": {
+                      "type": "string"
+                    },
+                    "priceType": {
+                      "type": "string",
+                      "enum": [
+                        "INDICATIVE_MID"
+                      ]
+                    },
+                    "estimatedShares": {
+                      "type": "string"
+                    },
+                    "estimatedCost": {
+                      "type": "string"
+                    },
+                    "remainder": {
+                      "type": "string"
+                    },
+                    "rounding": {
+                      "type": "string"
+                    },
+                    "calculatedAt": {
+                      "type": "string"
+                    },
+                    "disclaimer": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "symbol",
+                    "usdAmount",
+                    "price",
+                    "priceObservedAt",
+                    "priceType",
+                    "estimatedShares",
+                    "estimatedCost",
+                    "remainder",
+                    "rounding",
+                    "calculatedAt",
+                    "disclaimer"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders": {
+      "post": {
+        "summary": "Place a MARKET or LIMIT order (requires Idempotency-Key)",
+        "tags": [
+          "orders"
+        ],
+        "description": "MARKET orders are immediate-or-cancel against simulated liquidity. LIMIT orders execute what is immediately eligible and rest the remainder with funds/shares reserved. Replaying an Idempotency-Key with the same payload returns the original response with header Idempotent-Replayed: true; with a different payload returns 409.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "side": {
+                    "type": "string",
+                    "enum": [
+                      "BUY",
+                      "SELL"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "MARKET",
+                      "LIMIT"
+                    ]
+                  },
+                  "quantity": {
+                    "type": "string",
+                    "description": "Share quantity, > 0, at most 6 decimals (decimal string, e.g. \"2.5\")"
+                  },
+                  "limitPrice": {
+                    "type": "string",
+                    "description": "Required for LIMIT, forbidden for MARKET; at most 2 decimals (decimal string, e.g. \"400.00\")"
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "side",
+                  "type",
+                  "quantity"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "Required. 1-255 printable ASCII chars, scoped per user"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "BUY",
+                        "SELL"
+                      ]
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "MARKET",
+                        "LIMIT"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "PARTIALLY_FILLED",
+                        "FILLED",
+                        "CANCELLED"
+                      ]
+                    },
+                    "quantity": {
+                      "type": "string"
+                    },
+                    "filledQuantity": {
+                      "type": "string"
+                    },
+                    "remainingQuantity": {
+                      "type": "string"
+                    },
+                    "limitPrice": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "averageFillPrice": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "filledNotional": {
+                      "type": "string"
+                    },
+                    "reservation": {
+                      "type": "object",
+                      "properties": {
+                        "instrument": {
+                          "type": "string"
+                        },
+                        "initial": {
+                          "type": "string"
+                        },
+                        "remaining": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "instrument",
+                        "initial",
+                        "remaining"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cancelReason": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "USER_REQUESTED",
+                        "IOC_REMAINDER",
+                        "NO_LIQUIDITY"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "lastFilledAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "completedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "cancelledAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fills": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "string"
+                          },
+                          "notional": {
+                            "type": "string"
+                          },
+                          "liquidityLevel": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "executedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "quantity",
+                          "price",
+                          "notional",
+                          "liquidityLevel",
+                          "executedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "symbol",
+                    "side",
+                    "type",
+                    "status",
+                    "quantity",
+                    "filledQuantity",
+                    "remainingQuantity",
+                    "limitPrice",
+                    "averageFillPrice",
+                    "filledNotional",
+                    "reservation",
+                    "cancelReason",
+                    "createdAt",
+                    "updatedAt",
+                    "lastFilledAt",
+                    "completedAt",
+                    "cancelledAt",
+                    "fills"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List the caller's orders (newest first)",
+        "tags": [
+          "orders"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "PARTIALLY_FILLED",
+                "FILLED",
+                "CANCELLED"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "in": "query",
+            "name": "symbol",
+            "required": false
+          },
+          {
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "symbol": {
+                            "type": "string"
+                          },
+                          "side": {
+                            "type": "string",
+                            "enum": [
+                              "BUY",
+                              "SELL"
+                            ]
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "MARKET",
+                              "LIMIT"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "OPEN",
+                              "PARTIALLY_FILLED",
+                              "FILLED",
+                              "CANCELLED"
+                            ]
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "filledQuantity": {
+                            "type": "string"
+                          },
+                          "remainingQuantity": {
+                            "type": "string"
+                          },
+                          "limitPrice": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "averageFillPrice": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "filledNotional": {
+                            "type": "string"
+                          },
+                          "reservation": {
+                            "type": "object",
+                            "properties": {
+                              "instrument": {
+                                "type": "string"
+                              },
+                              "initial": {
+                                "type": "string"
+                              },
+                              "remaining": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "instrument",
+                              "initial",
+                              "remaining"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "cancelReason": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "USER_REQUESTED",
+                              "IOC_REMAINDER",
+                              "NO_LIQUIDITY"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "lastFilledAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "completedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "cancelledAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "fills": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "quantity": {
+                                  "type": "string"
+                                },
+                                "price": {
+                                  "type": "string"
+                                },
+                                "notional": {
+                                  "type": "string"
+                                },
+                                "liquidityLevel": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "executedAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "quantity",
+                                "price",
+                                "notional",
+                                "liquidityLevel",
+                                "executedAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "symbol",
+                          "side",
+                          "type",
+                          "status",
+                          "quantity",
+                          "filledQuantity",
+                          "remainingQuantity",
+                          "limitPrice",
+                          "averageFillPrice",
+                          "filledNotional",
+                          "reservation",
+                          "cancelReason",
+                          "createdAt",
+                          "updatedAt",
+                          "lastFilledAt",
+                          "completedAt",
+                          "cancelledAt",
+                          "fills"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "orders"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "summary": "Get one of the caller's orders with its fills",
+        "tags": [
+          "orders"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "BUY",
+                        "SELL"
+                      ]
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "MARKET",
+                        "LIMIT"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "PARTIALLY_FILLED",
+                        "FILLED",
+                        "CANCELLED"
+                      ]
+                    },
+                    "quantity": {
+                      "type": "string"
+                    },
+                    "filledQuantity": {
+                      "type": "string"
+                    },
+                    "remainingQuantity": {
+                      "type": "string"
+                    },
+                    "limitPrice": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "averageFillPrice": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "filledNotional": {
+                      "type": "string"
+                    },
+                    "reservation": {
+                      "type": "object",
+                      "properties": {
+                        "instrument": {
+                          "type": "string"
+                        },
+                        "initial": {
+                          "type": "string"
+                        },
+                        "remaining": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "instrument",
+                        "initial",
+                        "remaining"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cancelReason": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "USER_REQUESTED",
+                        "IOC_REMAINDER",
+                        "NO_LIQUIDITY"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "lastFilledAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "completedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "cancelledAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fills": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "string"
+                          },
+                          "notional": {
+                            "type": "string"
+                          },
+                          "liquidityLevel": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "executedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "quantity",
+                          "price",
+                          "notional",
+                          "liquidityLevel",
+                          "executedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "symbol",
+                    "side",
+                    "type",
+                    "status",
+                    "quantity",
+                    "filledQuantity",
+                    "remainingQuantity",
+                    "limitPrice",
+                    "averageFillPrice",
+                    "filledNotional",
+                    "reservation",
+                    "cancelReason",
+                    "createdAt",
+                    "updatedAt",
+                    "lastFilledAt",
+                    "completedAt",
+                    "cancelledAt",
+                    "fills"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Cancel the open remainder of an order and release its reservation",
+        "tags": [
+          "orders"
+        ],
+        "description": "Allowed while a circuit breaker is active. Prior fills are preserved.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "BUY",
+                        "SELL"
+                      ]
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "MARKET",
+                        "LIMIT"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "PARTIALLY_FILLED",
+                        "FILLED",
+                        "CANCELLED"
+                      ]
+                    },
+                    "quantity": {
+                      "type": "string"
+                    },
+                    "filledQuantity": {
+                      "type": "string"
+                    },
+                    "remainingQuantity": {
+                      "type": "string"
+                    },
+                    "limitPrice": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "averageFillPrice": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "filledNotional": {
+                      "type": "string"
+                    },
+                    "reservation": {
+                      "type": "object",
+                      "properties": {
+                        "instrument": {
+                          "type": "string"
+                        },
+                        "initial": {
+                          "type": "string"
+                        },
+                        "remaining": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "instrument",
+                        "initial",
+                        "remaining"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cancelReason": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "USER_REQUESTED",
+                        "IOC_REMAINDER",
+                        "NO_LIQUIDITY"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "lastFilledAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "completedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "cancelledAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "fills": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "quantity": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "type": "string"
+                          },
+                          "notional": {
+                            "type": "string"
+                          },
+                          "liquidityLevel": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "executedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "quantity",
+                          "price",
+                          "notional",
+                          "liquidityLevel",
+                          "executedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "symbol",
+                    "side",
+                    "type",
+                    "status",
+                    "quantity",
+                    "filledQuantity",
+                    "remainingQuantity",
+                    "limitPrice",
+                    "averageFillPrice",
+                    "filledNotional",
+                    "reservation",
+                    "cancelReason",
+                    "createdAt",
+                    "updatedAt",
+                    "lastFilledAt",
+                    "completedAt",
+                    "cancelledAt",
+                    "fills"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolio": {
+      "get": {
+        "summary": "Current balances, reservations, positions, cost basis and P&L",
+        "tags": [
+          "portfolio"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cash": {
+                      "type": "object",
+                      "properties": {
+                        "instrument": {
+                          "type": "string",
+                          "enum": [
+                            "USD"
+                          ]
+                        },
+                        "available": {
+                          "type": "string"
+                        },
+                        "reserved": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "instrument",
+                        "available",
+                        "reserved",
+                        "total"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "positions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "symbol": {
+                            "type": "string"
+                          },
+                          "shares": {
+                            "type": "object",
+                            "properties": {
+                              "available": {
+                                "type": "string"
+                              },
+                              "reserved": {
+                                "type": "string"
+                              },
+                              "total": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "available",
+                              "reserved",
+                              "total"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "averageCost": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "costBasis": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "priceObservedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "marketValue": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "unrealizedPnl": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "realizedPnl": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "symbol",
+                          "shares",
+                          "averageCost",
+                          "costBasis",
+                          "price",
+                          "priceObservedAt",
+                          "marketValue",
+                          "unrealizedPnl",
+                          "realizedPnl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "costBasis": {
+                          "type": "string"
+                        },
+                        "marketValue": {
+                          "type": "string"
+                        },
+                        "unrealizedPnl": {
+                          "type": "string"
+                        },
+                        "realizedPnl": {
+                          "type": "string"
+                        },
+                        "portfolioValue": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "costBasis",
+                        "marketValue",
+                        "unrealizedPnl",
+                        "realizedPnl",
+                        "portfolioValue"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "valuationComplete": {
+                      "type": "boolean"
+                    },
+                    "userId": {
+                      "type": "string"
+                    },
+                    "asOf": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "cash",
+                    "positions",
+                    "totals",
+                    "valuationComplete",
+                    "userId",
+                    "asOf"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolio/history": {
+      "get": {
+        "summary": "Portfolio reconstructed from the immutable ledger and historical prices at `at`",
+        "tags": [
+          "portfolio"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "at",
+            "required": true,
+            "description": "Inclusive cutoff, ISO-8601 with timezone, not in the future"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cash": {
+                      "type": "object",
+                      "properties": {
+                        "instrument": {
+                          "type": "string",
+                          "enum": [
+                            "USD"
+                          ]
+                        },
+                        "available": {
+                          "type": "string"
+                        },
+                        "reserved": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "instrument",
+                        "available",
+                        "reserved",
+                        "total"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "positions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "symbol": {
+                            "type": "string"
+                          },
+                          "shares": {
+                            "type": "object",
+                            "properties": {
+                              "available": {
+                                "type": "string"
+                              },
+                              "reserved": {
+                                "type": "string"
+                              },
+                              "total": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "available",
+                              "reserved",
+                              "total"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "averageCost": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "costBasis": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "priceObservedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "marketValue": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "unrealizedPnl": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "realizedPnl": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "symbol",
+                          "shares",
+                          "averageCost",
+                          "costBasis",
+                          "price",
+                          "priceObservedAt",
+                          "marketValue",
+                          "unrealizedPnl",
+                          "realizedPnl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "costBasis": {
+                          "type": "string"
+                        },
+                        "marketValue": {
+                          "type": "string"
+                        },
+                        "unrealizedPnl": {
+                          "type": "string"
+                        },
+                        "realizedPnl": {
+                          "type": "string"
+                        },
+                        "portfolioValue": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "costBasis",
+                        "marketValue",
+                        "unrealizedPnl",
+                        "realizedPnl",
+                        "portfolioValue"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "valuationComplete": {
+                      "type": "boolean"
+                    },
+                    "userId": {
+                      "type": "string"
+                    },
+                    "requestedAt": {
+                      "type": "string"
+                    },
+                    "valuationTimestamp": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "ledger": {
+                      "type": "object",
+                      "properties": {
+                        "lastJournalSequence": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "lastEventAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "boundary": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "lastJournalSequence",
+                        "lastEventAt",
+                        "boundary"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "reservations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "orderId": {
+                            "type": "string"
+                          },
+                          "instrument": {
+                            "type": "string"
+                          },
+                          "amount": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "orderId",
+                          "instrument",
+                          "amount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "pricesUsed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "symbol": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "observedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "symbol",
+                          "price",
+                          "observedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "cash",
+                    "positions",
+                    "totals",
+                    "valuationComplete",
+                    "userId",
+                    "requestedAt",
+                    "valuationTimestamp",
+                    "ledger",
+                    "reservations",
+                    "pricesUsed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Standard error envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {},
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Standard error envelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth"
+    },
+    {
+      "name": "market"
+    },
+    {
+      "name": "orders"
+    },
+    {
+      "name": "portfolio"
+    },
+    {
+      "name": "system"
+    }
+  ]
+}
