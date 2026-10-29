@@ -20,7 +20,7 @@ placement, a per-asset circuit breaker, portfolio valuation with weighted-averag
 ```bash
 npm ci
 cp .env.example .env
-docker compose up -d postgres   # PostgreSQL with databases `trading` and `trading_test`
+docker compose up -d --wait postgres   # PostgreSQL on localhost:55432, databases `trading` + `trading_test`
 npm run db:setup                # migrations + seed (4 assets, 2 funded users)
 npm run dev                     # API on http://localhost:3000, prices tick every second
 ```
@@ -92,7 +92,7 @@ Prerequisites: Node.js ≥ 22.12, and PostgreSQL 15+ (via Docker Compose or a lo
 ```bash
 npm ci
 cp .env.example .env            # development defaults; never use the JWT placeholder in production
-docker compose up -d postgres   # creates databases `trading` and `trading_test` (user/pass: trading)
+docker compose up -d --wait postgres   # localhost:55432, databases `trading` + `trading_test` (user/pass: trading)
 npm run db:setup                # apply migrations + idempotent seed (assets, house accounts, users)
 npm run dev                     # API on http://localhost:3000, simulator ticking every second
 ```
@@ -100,9 +100,14 @@ npm run dev                     # API on http://localhost:3000, simulator tickin
 Open **http://localhost:3000/docs** for Swagger UI (raw spec: `/docs/json`, committed copy:
 [docs/openapi.json](docs/openapi.json)).
 
-> Using a local PostgreSQL instead of Docker? Create the role and databases once:
-> `psql -d postgres -c "CREATE ROLE trading LOGIN PASSWORD 'trading' CREATEDB" -c "CREATE DATABASE trading OWNER trading" -c "CREATE DATABASE trading_test OWNER trading"`.
-> If port 5432 is taken, run compose with `POSTGRES_PORT=5433` and adjust both URLs in `.env`.
+> **Docker port:** Compose publishes PostgreSQL on host port **55432** (not 5432) so it never
+> clashes with a locally installed PostgreSQL. If 55432 is taken, start it with
+> `POSTGRES_PORT=<port> docker compose up -d --wait postgres` and use that port in both URLs in `.env`.
+> Docker Desktop must be running (`docker info` should print a server version).
+>
+> **Local PostgreSQL instead of Docker?** Create the role and databases once:
+> `psql -d postgres -c "CREATE ROLE trading LOGIN PASSWORD 'trading' CREATEDB" -c "CREATE DATABASE trading OWNER trading" -c "CREATE DATABASE trading_test OWNER trading"`,
+> then change `55432` to `5432` in both URLs in `.env`.
 
 ### Authenticate locally
 
@@ -574,7 +579,7 @@ Example order response (abridged):
 ## Testing
 
 ```bash
-npm test                 # everything (needs TEST_DATABASE_URL, default postgres://trading:trading@localhost:5432/trading_test)
+npm test                 # everything (needs TEST_DATABASE_URL, default postgres://trading:trading@localhost:55432/trading_test)
 npm run test:unit
 npm run test:integration
 ```

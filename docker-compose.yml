@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: trading
       POSTGRES_DB: trading
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '${POSTGRES_PORT:-55432}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/docker-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
