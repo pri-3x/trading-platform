@@ -24,7 +24,8 @@
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "demo": "tsx scripts/demo.ts"
   },
   "dependencies": {
     "@fastify/jwt": "10.2.5",

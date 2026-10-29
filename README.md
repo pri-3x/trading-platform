@@ -12,6 +12,60 @@ placement, a per-asset circuit breaker, portfolio valuation with weighted-averag
 
 ---
 
+## Reviewer walkthrough (5 minutes)
+
+**1. Start it** (needs Node.js ≥ 22.12 and Docker; for a local PostgreSQL instead, see
+[Quick start](#quick-start))
+
+```bash
+npm ci
+cp .env.example .env
+docker compose up -d postgres   # PostgreSQL with databases `trading` and `trading_test`
+npm run db:setup                # migrations + seed (4 assets, 2 funded users)
+npm run dev                     # API on http://localhost:3000, prices tick every second
+```
+
+**2. Watch the whole flow** (in a second terminal, while the API is running)
+
+```bash
+npm run demo
+```
+
+The demo prints each step and its result: it registers a user, lists live prices, uses the
+calculator, places a market buy, replays it with the same `Idempotency-Key` (same order, no double
+execution) and with a different payload (409), places a limit buy that rests and reserves cash,
+cancels it (reservation released), sells with realized P&L, triggers validation and insufficient
+funds/shares errors, rebuilds the portfolio at a **past timestamp** from the ledger, and shows that
+another user cannot read the order.
+
+**3. Try it yourself** in Swagger UI at **http://localhost:3000/docs**. Log in with
+`POST /auth/login` (`alice@example.com` / `password123`), click **Authorize**, paste the token,
+then try `POST /orders` (add any `Idempotency-Key`), `GET /portfolio` and
+`GET /portfolio/history?at=<ISO time>`.
+
+**4. Run the tests** (they use the `trading_test` database, reset before every test)
+
+```bash
+npm test          # 174 tests: unit + PostgreSQL integration (concurrency, breaker, history)
+npm run lint && npm run build
+```
+
+**What to look at**
+
+| Requirement                                              | Where                                                                                                                           |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Immutable double-entry ledger, enforced by the database  | [Ledger model](#ledger-and-accounting-model), `drizzle/0001_ledger_guards.sql`                                                  |
+| Historical portfolio (highest priority)                  | [Historical reconstruction](#historical-reconstruction), `src/modules/portfolio/`, `test/integration/portfolio-history.test.ts` |
+| Orders, partial fills, reservations, cancellation        | [Trading engine](#trading-engine), `src/modules/orders/`                                                                        |
+| Idempotency and concurrency                              | [Concurrency model](#concurrency-model), `test/integration/idempotency-concurrency.test.ts`                                     |
+| Circuit breaker (not in the demo; needs injected prices) | [Circuit breaker](#circuit-breaker), `test/integration/circuit-breaker.test.ts`                                                 |
+| Pure financial logic (no I/O)                            | `src/domain/`                                                                                                                   |
+
+> If port 3000 is already in use, set `PORT=3001` in `.env`; `npm run demo` and the server both
+> read it.
+
+---
+
 ## Contents
 
 1. [Quick start](#quick-start)
