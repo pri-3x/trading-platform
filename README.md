@@ -165,6 +165,19 @@ The simulator elects a single leader through a PostgreSQL advisory lock, so runn
 workers (or leaving `SIMULATOR_ENABLED=true` on several API replicas) never double-ticks.
 SIGINT/SIGTERM stop the simulator, drain HTTP connections and close the pool (10 s hard timeout).
 
+### Hosted deployment (Render + Vercel)
+
+- **Render** (`render.yaml` Blueprint): a PostgreSQL database plus one web service that runs
+  migrations and the idempotent seed on start, then serves the API with the simulator enabled.
+  In the Render dashboard choose **New → Blueprint**, pick this repository and set
+  `SEED_USER_PASSWORD` when prompted. Free web services sleep when idle, which also pauses
+  price ticks.
+- **Vercel** (`vercel.json`, `api/index.js` → `src/vercel.ts`): the same API as a serverless
+  function. Functions are frozen between requests, so the simulator never runs there; point it
+  at the Render database and let Render tick prices. Import the repository in Vercel and set
+  `DATABASE_URL` (Render's _External_ URL with `?sslmode=require`), `JWT_SECRET` (≥ 32 chars),
+  `DATABASE_POOL_MAX=3` and `SIMULATOR_ENABLED=false`.
+
 ---
 
 ## Scripts

@@ -1,0 +1,35 @@
+# Render Blueprint: PostgreSQL + one web service that serves the API and runs the price simulator.
+# Migrations and the (idempotent) seed run on every start, before the server listens.
+databases:
+  - name: trading-db
+    plan: free
+    databaseName: trading
+    user: trading
+    postgresMajorVersion: '16'
+
+services:
+  - type: web
+    name: trading-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node dist/cli/migrate.js && node dist/cli/seed.js && node dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trading-db
+          property: connectionString
+      - key: DATABASE_POOL_MAX
+        value: '10'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SIMULATOR_ENABLED
+        value: 'true'
+      # Password for the seeded demo users (alice@example.com, bob@example.com); min 8 chars.
+      - key: SEED_USER_PASSWORD
+        sync: false
