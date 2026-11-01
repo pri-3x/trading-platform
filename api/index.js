@@ -14,13 +14,7 @@ export default async function entry(req, res) {
     res.setHeader('content-type', 'application/json');
     res.end(
       JSON.stringify({
-        error: {
-          code: 'STARTUP_FAILED',
-          message: err instanceof Error ? err.message : String(err),
-          node: process.version,
-          execArgv: process.execArgv,
-          nodeOptions: process.env.NODE_OPTIONS ?? null,
-        },
+        error: { code: 'STARTUP_FAILED', message: err instanceof Error ? err.message : String(err) },
       }),
     );
   }
