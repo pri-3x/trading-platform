@@ -55,6 +55,7 @@ export async function buildApp(
     transform: jsonSchemaTransform,
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
+  app.get('/', { schema: { hide: true } }, (_request, reply) => reply.redirect('/docs'));
   await app.register(authPlugin, {
     secret: c.config.jwt.secret,
     expiresIn: c.config.jwt.expiresIn,
