@@ -10,6 +10,18 @@ placement, a per-asset circuit breaker, portfolio valuation with weighted-averag
 - Zod validation → OpenAPI 3 (Swagger UI at `/docs`) · JWT auth · decimal.js (no float money)
 - Vitest: 59 unit tests + 115 PostgreSQL integration tests (real concurrency, no mocked DB)
 
+## Live demo
+
+| | URL |
+|---|---|
+| Swagger UI (Vercel, serverless) | **https://trading-platform-eight-rho.vercel.app/docs** |
+| API with the price simulator (Render) | https://trading-api-5xfw.onrender.com/docs · health: [`/health`](https://trading-api-5xfw.onrender.com/health) |
+
+Try it: call `POST /auth/register` with any email and password (new users get 100,000 simulated
+USD), click **Authorize** and paste the token, then `GET /assets`, `POST /orders` with an
+`Idempotency-Key` header, `GET /portfolio` and `GET /portfolio/history?at=<ISO time>`.
+Render's free tier sleeps when idle, so the first request can take about a minute.
+
 ---
 
 ## Reviewer walkthrough (5 minutes)
